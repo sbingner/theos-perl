@@ -1,0 +1,13 @@
+Package: perl
+Name: perl
+Depends: firmware (>= 11.0)
+Version: 5.26.1
+Architecture: iphoneos-arm
+Description: Perl.  It's perl.
+Maintainer: Samuel Bingner
+Author: Samuel Bingner
+Section: System
+Tag: role::hacker
+Provides: org.coolstar.perl
+Replaces: org.coolstar.perl
+Conflicts: org.coolstar.perl

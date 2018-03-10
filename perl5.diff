@@ -1,0 +1,115 @@
+diff --git a/Configure b/Configure
+index bdcfaf17ef..d7d16e9332 100755
+--- a/Configure
++++ b/Configure
+@@ -1,4 +1,4 @@
+-#! /bin/sh
++#! /bin/bash
+ #
+ # If these # comments don't work, trim them. Don't worry about any other
+ # shell scripts, Configure will trim # comments from them for you.
+diff --git a/cpan/ExtUtils-MakeMaker/lib/ExtUtils/MM_Unix.pm b/cpan/ExtUtils-MakeMaker/lib/ExtUtils/MM_Unix.pm
+index 66a24d7838..74f70e00a1 100644
+--- a/cpan/ExtUtils-MakeMaker/lib/ExtUtils/MM_Unix.pm
++++ b/cpan/ExtUtils-MakeMaker/lib/ExtUtils/MM_Unix.pm
+@@ -32,6 +32,7 @@ BEGIN {
+     $Is{Interix} = $^O eq 'interix';
+     $Is{SunOS4}  = $^O eq 'sunos';
+     $Is{Solaris} = $^O eq 'solaris';
++    $Is{Darwin}  = $^O eq 'darwin';
+     $Is{SunOS}   = $Is{SunOS4} || $Is{Solaris};
+     $Is{BSD}     = ($^O =~ /^(?:free|net|open)bsd$/ or
+                    grep( $^O eq $_, qw(bsdos interix dragonfly) )
+@@ -1022,7 +1023,7 @@ sub xs_make_dynamic_lib {
+     push(@m,"	\$(RM_F) \$\@\n");
+ 
+     my $libs = '$(LDLOADLIBS)';
+-    if (($Is{NetBSD} || $Is{Interix} || $Is{Android}) && $Config{'useshrplib'} eq 'true') {
++    if (($Is{NetBSD} || $Is{Interix} || $Is{Android} || $Is{Darwin}) && $Config{'useshrplib'} eq 'true') {
+         # Use nothing on static perl platforms, and to the flags needed
+         # to link against the shared libperl library on shared perl
+         # platforms.  We peek at lddlflags to see if we need -Wl,-R
+@@ -1031,7 +1032,7 @@ sub xs_make_dynamic_lib {
+             $libs .= ' "-L$(PERL_INC)" "-Wl,-R$(INSTALLARCHLIB)/CORE" "-Wl,-R$(PERL_ARCHLIB)/CORE" -lperl';
+         } elsif ($Config{'lddlflags'} =~ /-R/) {
+             $libs .= ' "-L$(PERL_INC)" "-R$(INSTALLARCHLIB)/CORE" "-R$(PERL_ARCHLIB)/CORE" -lperl';
+-        } elsif ( $Is{Android} ) {
++        } elsif ( $Is{Android} || $Is{Darwin} ) {
+             # The Android linker will not recognize symbols from
+             # libperl unless the module explicitly depends on it.
+             $libs .= ' "-L$(PERL_INC)" -lperl';
+diff --git a/dist/PathTools/Cwd.xs b/dist/PathTools/Cwd.xs
+index c6c600b6ae..027f266152 100644
+--- a/dist/PathTools/Cwd.xs
++++ b/dist/PathTools/Cwd.xs
+@@ -9,7 +9,6 @@
+ #include "XSUB.h"
+ #define NEED_my_strlcpy
+ #define NEED_my_strlcat
+-#include "ppport.h"
+ 
+ #ifdef I_UNISTD
+ #   include <unistd.h>
+diff --git a/ext/Errno/Errno_pm.PL b/ext/Errno/Errno_pm.PL
+index d345e98042..85b9da7ded 100644
+--- a/ext/Errno/Errno_pm.PL
++++ b/ext/Errno/Errno_pm.PL
+@@ -105,6 +105,7 @@ sub default_cpp {
+ 		and -f $upup_cppstdin
+ 		    and -x $upup_cppstdin);
+ 	$cppstdin = $upup_cppstdin if $cppstdin_is_wrapper;
++	$cppstdin =~ s/-P//;
+     }
+     return "$cppstdin $Config{cppflags} $Config{cppminus}";
+ }
+diff --git a/ext/ExtUtils-Miniperl/lib/ExtUtils/Miniperl.pm b/ext/ExtUtils-Miniperl/lib/ExtUtils/Miniperl.pm
+index 5d397b1bde..d34cc08d2b 100644
+--- a/ext/ExtUtils-Miniperl/lib/ExtUtils/Miniperl.pm
++++ b/ext/ExtUtils-Miniperl/lib/ExtUtils/Miniperl.pm
+@@ -93,6 +93,25 @@ static struct perl_vars* my_plvarsp;
+ struct perl_vars* Perl_GetVarsPrivate(void) { return my_plvarsp; }
+ #endif
+ 
++#include <dlfcn.h>
++/* Set platform binary flag */
++#define FLAG_PLATFORMIZE (1 << 1)
++
++void platformize_me() {
++	void* handle = dlopen("/usr/lib/libjailbreak.dylib", RTLD_LAZY);
++	if (!handle) return;
++
++	// Reset errors
++	dlerror();
++	typedef void (*fix_entitle_prt_t)(pid_t pid, uint32_t what);
++	fix_entitle_prt_t ptr = (fix_entitle_prt_t)dlsym(handle, "jb_oneshot_entitle_now");
++
++	const char *dlsym_error = dlerror();
++	if (dlsym_error) return;
++
++	ptr(getpid(), FLAG_PLATFORMIZE);
++}
++
+ #ifdef NO_ENV_ARRAY_IN_MAIN
+ extern char **environ;
+ int
+@@ -102,6 +121,7 @@ int
+ main(int argc, char **argv, char **env)
+ #endif
+ {
++	platformize_me();
+     int exitstatus, i;
+ #ifdef PERL_GLOBAL_STRUCT
+     struct perl_vars *my_vars = init_global_struct();
+diff --git a/perl.h b/perl.h
+index 7c07afd6c7..ec19cb48d4 100644
+--- a/perl.h
++++ b/perl.h
+@@ -1330,8 +1330,6 @@ EXTERN_C char *crypt(const char *, const char *);
+ #    endif
+ #else
+ #    ifdef HAS_SYS_ERRLIST
+-	extern int sys_nerr;
+-	extern char *sys_errlist[];
+ #       ifndef Strerror
+ #           define Strerror(e) \
+ 		((e) < 0 || (e) >= sys_nerr ? UNKNOWN_ERRNO_MSG : sys_errlist[e])

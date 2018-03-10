@@ -1,0 +1,6 @@
+[submodule "perl5"]
+	path = perl5
+	url = git@github.com:Perl/perl5.git
+[submodule "perl-cross"]
+	path = perl-cross
+	url = git@github.com:arsv/perl-cross.git

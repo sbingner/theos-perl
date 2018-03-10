@@ -1,0 +1,372 @@
+diff --git a/0pack.sh b/0pack.sh
+index f855e68..7e9d11d 100755
+--- a/0pack.sh
++++ b/0pack.sh
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ 
+ # perl-cross, being an overlaid changeset, is not particulary
+ # git- or github-friendly.
+diff --git a/Makefile b/Makefile
+index 0e9698b..0cabc3a 100644
+--- a/Makefile
++++ b/Makefile
+@@ -138,7 +138,7 @@ ifeq ($(soname),)
+ perl$x: LDFLAGS += -Wl,-rpath,$(archlib)/CORE
+ endif
+ endif # or should it be "else"?
+-perl$x: LDFLAGS += -Wl,-E
++#perl$x: LDFLAGS += -Wl,-E
+ 
+ perl$x: perlmain$o $(LIBPERL) $(static_tgt) static.list ext.libs
+ 	$(eval extlibs=$(shell cat ext.libs))
+@@ -183,7 +183,7 @@ endif
+ 
+ ifeq ($(useshrplib),true)
+ $(LIBPERL):
+-	$(CC) $(LDDLFLAGS) -o $@ $(filter %$o,$^) $(LIBS)
++	$(CC) $(LDDLFLAGS) -install_name $(archlib)/CORE/$@ -o $@ $(filter %$o,$^) $(LIBS)
+ else
+ $(LIBPERL):
+ 	$(AR) cru $@ $(filter %$o,$^)
+@@ -282,7 +282,7 @@ dist/Unicode-Normalize/Makefile: lib/unicore/CombiningClass.pl
+ 
+ # mktables does not touch the files unless they need to be rebuilt,
+ # which confuses make.
+-lib/unicore/CombiningClass.pl pod/perluniprops.pod:
++lib/unicore/CombiningClass.pl pod/perluniprops.pod: utilities
+ 	./miniperl_top lib/unicore/mktables -w -C lib/unicore -P pod -maketest -makelist -p
+ 
+ # The following rules ensure that modules listed in mkppport.lst get
+diff --git a/Makefile.config.SH b/Makefile.config.SH
+index c3f3576..6859adf 100755
+--- a/Makefile.config.SH
++++ b/Makefile.config.SH
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ 
+ if [ ! -f config.sh ]; then
+ 	echo "config.sh not found" >&2
+diff --git a/cnf/config.guess b/cnf/config.guess
+index 2e9ad7f..38714c7 100755
+--- a/cnf/config.guess
++++ b/cnf/config.guess
+@@ -1,4 +1,4 @@
+-#! /bin/sh
++#! /bin/bash
+ # Attempt to guess a canonical system name.
+ #   Copyright 1992-2016 Free Software Foundation, Inc.
+ 
+@@ -925,7 +925,7 @@ EOF
+ 	  EV67)  UNAME_MACHINE=alphaev67 ;;
+ 	  EV68*) UNAME_MACHINE=alphaev68 ;;
+ 	esac
+-	objdump --private-headers /bin/sh | grep -q ld.so.1
++	objdump --private-headers /bin/bash | grep -q ld.so.1
+ 	if test "$?" = 0 ; then LIBC=gnulibc1 ; fi
+ 	echo ${UNAME_MACHINE}-unknown-linux-${LIBC}
+ 	exit ;;
+diff --git a/cnf/config.sub b/cnf/config.sub
+index cc69b06..648eab2 100755
+--- a/cnf/config.sub
++++ b/cnf/config.sub
+@@ -1,4 +1,4 @@
+-#! /bin/sh
++#! /bin/bash
+ # Configuration validation subroutine script.
+ #   Copyright 1992-2016 Free Software Foundation, Inc.
+ 
+diff --git a/cnf/configure b/cnf/configure
+index f3263d6..6080bec 100755
+--- a/cnf/configure
++++ b/cnf/configure
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ 
+ base=${0%/*}; test -z "$base" && base=.
+ 
+@@ -8,7 +8,7 @@ newcfglog() { mv "$cfglog" "$1"; cfglog="$1"; }
+ appendlog() { cat "$cfglog" >> "$1"; rm -f "$cfglog"; cfglog="$1"; }
+ 
+ config="config.sh.$$"
+-echo "#!/bin/sh" > $config
++echo "#!/bin/bash" > $config
+ echo "" >> $config
+ setconfig() { mv "$config" "$1"; config="$1"; }
+ delconfig() { rm "$config"; }
+diff --git a/cnf/configure__f.sh b/cnf/configure__f.sh
+index 4bef2be..14c4fe5 100644
+--- a/cnf/configure__f.sh
++++ b/cnf/configure__f.sh
+@@ -254,10 +254,10 @@ try_link() {
+ 	try_link_libs $libs $*
+ }
+ 
+-try_readelf() {
+-	require 'readelf'
++try_nm() {
++	require 'nm'
+ 	require '_o'
+-	run $readelf $* try$_o
++	run $nm $* try$_o
+ }
+ 
+ try_objdump() {
+diff --git a/cnf/configure_func.sh b/cnf/configure_func.sh
+index 53c9854..dc1bfa8 100644
+--- a/cnf/configure_func.sh
++++ b/cnf/configure_func.sh
+@@ -13,9 +13,14 @@ checkfunc() {
+ }
+ 
+ funcincludes() {
+-	case "$1" in
+-		*NULL*) try_includes "stdlib.h" ;;
+-	esac
++#	case "$1" in
++#		*NULL*)
++			try_includes "stdlib.h"
++			try_includes "stdarg.h"
++			try_includes "stdio.h"
++			try_includes "unistd.h"
++#			;;
++#	esac
+ 
+ 	test -n "$3" && try_includes $3
+ 	test -n "$2" && try_includes $2
+@@ -51,8 +56,8 @@ checkfunc d_difftime 'difftime' "0,0"
+ checkfunc d_difftime64 'difftime64'
+ checkfunc d_dirfd 'dirfd'
+ checkfunc d_dladdr 'dladdr' 'NULL, NULL' 'dlfcn.h'
+-checkfunc d_dlerror 'dlerror'
+-checkfunc d_dlopen 'dlopen'
++checkfunc d_dlerror 'dlerror' '' 'dlfcn.h'
++checkfunc d_dlopen 'dlopen' 'NULL, 0' 'dlfcn.h'
+ checkfunc d_drand48 'drand48'
+ checkfunc d_dup2 'dup2' "0,0" 'unistd.h'
+ checkfunc d_dup3 'dup3' "0,0,0" 'fcntl.h unistd.h'
+@@ -90,8 +95,8 @@ checkfunc d_getespwnam 'getespwnam'
+ checkfunc d_getfsstat 'getfsstat'
+ checkfunc d_getgrent 'getgrent'
+ checkfunc d_getgrps 'getgroups'
+-checkfunc d_gethbyaddr 'gethostbyaddr'
+-checkfunc d_gethbyname 'gethostbyname'
++checkfunc d_gethbyaddr 'gethostbyaddr' '0,0,0' 'netdb.h'
++checkfunc d_gethbyname 'gethostbyname' 'NULL' 'netdb.h'
+ checkfunc d_getnbyaddr 'getnetbyaddr' '0,0' 'netdb.h'
+ checkfunc d_getnbyname 'getnetbyname' 'NULL' 'netdb.h'
+ checkfunc d_gethent 'gethostent'
+@@ -123,7 +128,7 @@ checkfunc d_getsent 'getservent'
+ checkfunc d_setsent 'setservent'
+ checkfunc d_endsent 'endservent'
+ checkfunc d_getspnam 'getspnam'
+-checkfunc d_gettimeod 'gettimeofday' 'NULL,NULL'
++checkfunc d_gettimeod 'gettimeofday' 'NULL,NULL' 'sys/time.h'
+ checkfunc d_gmtime64 'gmtime64'
+ checkfunc d_hasmntopt 'hasmntopt'
+ checkfunc d_htonl 'htonl' "0" 'stdio.h sys/types.h netinet/in.h arpa/inet.h'
+@@ -194,7 +199,7 @@ checkfunc d_qgcvt 'qgcvt' '1.0,1,NULL'
+ checkfunc d_rand 'rand'
+ checkfunc d_random 'random'
+ checkfunc d_re_comp 're_comp'
+-checkfunc d_readdir 'readdir' 'NULL'
++checkfunc d_readdir 'readdir' 'NULL' 'dirent.h'
+ checkfunc d_readlink 'readlink'
+ checkfunc d_readv 'readv'
+ checkfunc d_recvmsg 'recvmsg'
+@@ -245,7 +250,7 @@ checkfunc d_shmget 'shmget'
+ checkfunc d_sigaction 'sigaction'
+ checkfunc d_sigprocmask 'sigprocmask'
+ checkfunc d_sigsetjmp 'sigsetjmp' "NULL,0" 'setjmp.h'
+-checkfunc d_snprintf 'snprintf'
++checkfunc d_snprintf 'snprintf' 'NULL,0,NULL' 'stdio.h'
+ checkfunc d_sockatmark 'sockatmark'
+ checkfunc d_socket 'socket' "0,0,0" 'sys/types.h sys/socket.h'
+ checkfunc d_sockpair 'socketpair'
+@@ -264,8 +269,8 @@ checkfunc d_strtod 'strtod' 'NULL,NULL'
+ checkfunc d_strtol 'strtol' 'NULL,NULL,0'
+ checkfunc d_strtold 'strtold'
+ checkfunc d_strtold_l 'strtold_l'
+-checkfunc d_strtoll 'strtoll'
+-checkfunc d_strtoq 'strtoq'
++checkfunc d_strtoll 'strtoll' 'NULL,NULL,0'
++checkfunc d_strtoq 'strtoq' 'NULL,NULL,0' 'sys/types.h limits.h'
+ checkfunc d_strtoul 'strtoul' 'NULL,NULL,0'
+ checkfunc d_strtoull 'strtoull' 'NULL,NULL,0'
+ checkfunc d_strtouq 'strtouq'
+@@ -292,7 +297,7 @@ checkfunc d_usleep 'usleep'
+ checkfunc d_ustat 'ustat'
+ define d_vfork 'undef' # unnecessary
+ checkfunc d_vprintf 'vprintf' 'NULL,0'
+-checkfunc d_vsnprintf 'vsnprintf'
++checkfunc d_vsnprintf 'vsnprintf' 'NULL,0,NULL,0' 'stdio.h'
+ checkfunc d_wait4 'wait4'
+ checkfunc d_waitpid 'waitpid' '0,NULL,0'
+ checkfunc d_wcscmp 'wcscmp'
+diff --git a/cnf/configure_misc.sh b/cnf/configure_misc.sh
+index e8c2d5f..f6cdd7a 100644
+--- a/cnf/configure_misc.sh
++++ b/cnf/configure_misc.sh
+@@ -92,7 +92,7 @@ define d_oldsock 'undef'
+ define extras ''
+ 
+ # These are important but we don't test them
+-define startsh '#!/bin/sh'
++define startsh '#!/bin/bash'
+ define spitshell 'cat'
+ define d_Gconvert 'sprintf((b),"%.*g",(n),(x))'
+ define d_modfl_pow32_bug 'undef'
+@@ -287,7 +287,7 @@ define rmail # unused
+ define runnm false # unused
+ define sed sed # unused
+ define sendmail
+-define sh /bin/sh
++define sh /bin/bash
+ define shar # unused
+ define sleep # unused
+ define smail # unused
+@@ -335,7 +335,7 @@ define make_set_make '#'
+ define mallocobj
+ define mallocsrc
+ define mistrustnm
+-define n '-n'
++#define n '-n'
+ define orderlib
+ define perl
+ define perl5
+diff --git a/cnf/configure_tool.sh b/cnf/configure_tool.sh
+index 32201c0..e156ea1 100644
+--- a/cnf/configure_tool.sh
++++ b/cnf/configure_tool.sh
+@@ -2,7 +2,16 @@
+ 
+ tryprog() {
+ 	log "trying $1=$2"
+-	if command -v "$2" 1>/dev/null 2>/dev/null; then
++	if echo $2 | grep -q xcrun; then
++		if $2 -f $3 1>/dev/null 2>/dev/null; then
++			define "$1" "$2$3"
++			result "$2$3"
++			return 0
++		else
++			return 1
++		fi
++	fi
++	if command -v $2 1>/dev/null 2>/dev/null; then
+ 		define "$1" "$2"
+ 		result "$2"
+ 		return 0
+@@ -75,7 +84,12 @@ whichprog() {
+ 	fi
+ 
+ 	# Finally, try $target-gcc
+-	test -n "$toolsprefix" && tryprog $1 "$toolsprefix$3"  && return 0
++	mstart "trying $toolsprefix$3"
++	if echo $toolsprefix | grep -q xcrun; then
++		test -n "$toolsprefix" && tryprog $1 "$toolsprefix" $3   && return 0
++	else
++		test -n "$toolsprefix" && tryprog $1 "$toolsprefix$3"  && return 0
++	fi
+ 	test -n "$target"      && tryprog $1 "$target-$3"      && return 0
+ 	test -n "$targetarch"  && tryprog $1 "$targetarch-$3"  && return 0
+ 
+@@ -86,9 +100,8 @@ whichprog() {
+ whichprog cc CC gcc || whichprog cc CC cc || die "No C compiler found"
+ #whichprog ld LD ld # while correct, this breaks MM library test
+ whichprog ar AR ar || die "Cannot find ar"
+-whichprog nm NM nm
++whichprog nm NM nm || die "Cannot find nm"
+ whichprog ranlib RANLIB ranlib
+-whichprog readelf READELF readelf || die "Cannot find readelf"
+ whichprog objdump OBJDUMP objdump || die "Cannot find objdump"
+ 
+ # XXX: this looks wrong, but the usemmldlt code depends on $ld being able
+@@ -154,7 +167,7 @@ define _exe ''
+ 
+ # Used only for modules
+ define cccdlflags '-fPIC -Wno-unused-function'
+-define ccdlflags '-Wl,-E'
++#define ccdlflags '-Wl,-E'
+ 
+ # Misc flags setup
+ predef lddlflags "-shared"	# modules
+@@ -262,6 +275,10 @@ if not hinted 'osname'; then
+ 			define osname "linux"
+ 			result "Linux"
+ 			;;
++		*-darwin*)
++			define osname "darwin"
++			result "Darwin"
++			;;
+ 		*-bsd*)
+ 			define osname "bsd"
+ 			result "BSD"
+diff --git a/cnf/configure_type.sh b/cnf/configure_type.sh
+index 4743a69..0302e3a 100644
+--- a/cnf/configure_type.sh
++++ b/cnf/configure_type.sh
+@@ -38,13 +38,13 @@ checksize() {
+ 		return
+ 	fi
+ 
+-	if not try_readelf -s > try.out 2>>$cfglog; then
++	if not try_nm -g > try.out 2>>$cfglog; then
+ 		result 'unknown'
+ 		die "Cannot determine sizeof($2), use -D${1}size="
+ 		return
+ 	fi
+ 
+-	result=`grep foo try.out | sed -r -e 's/.*: [0-9]+ +//' -e 's/ .*//'`
++	result=`grep foo try.out | sed -e s/' .*'// -e s/^0*//`
+ 	if [ -z "$result" -o "$result" -le 0 ]; then
+ 		result "unknown"
+ 		die "Cannot determine sizeof($2)"
+diff --git a/cnf/configure_type_sel.sh b/cnf/configure_type_sel.sh
+index 24d508b..4ae1094 100644
+--- a/cnf/configure_type_sel.sh
++++ b/cnf/configure_type_sel.sh
+@@ -114,7 +114,7 @@ if not hinted 'byteorder'; then
+ 	fi
+ 
+ 	# Most targets use .data but PowerPC has .sdata instead
+-	if try_compile && try_objdump -j .data -j .sdata -s; then
++	if try_compile && try_objdump -s ; then
+ 		bo=`grep '11' try.out | grep '44' | sed -e 's/  .*//' -e 's/[^1-8]//g' -e 's/\([1-8]\)\1/\1/g'`
+ 	else
+ 		bo=''
+diff --git a/cnf/diffs/dedup.px b/cnf/diffs/dedup.px
+index 1a8f728..7cbaa08 100755
+--- a/cnf/diffs/dedup.px
++++ b/cnf/diffs/dedup.px
+@@ -2,7 +2,7 @@
+ 
+ @files = (glob("perl*/*.patch"), glob("cperl*/*.patch"));
+ 
+-print "#!/bin/sh\n\n";
++print "#!/bin/bash\n\n";
+ 
+ %map = ( );
+ 
+diff --git a/configure b/configure
+index 3b45420..88b7e0e 100755
+--- a/configure
++++ b/configure
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ 
+ earlydie() { echo "$@" >&2; exit 1; }
+ 
+diff --git a/miniperl_top b/miniperl_top
+index 8766d7d..1677567 100755
+--- a/miniperl_top
++++ b/miniperl_top
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ 
+ # This script can be used to run Makefile.PL 
+ # Note that is relies on $0 to tell where lib/ is; typically
