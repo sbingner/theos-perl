@@ -1,6 +1,6 @@
 Package: perl
 Name: perl
-Depends: firmware (>= 11.0)
+Depends: firmware (>= 8.0)
 Version: 5.26.1
 Architecture: iphoneos-arm
 Description: Perl.  It's perl.

@@ -1,5 +1,5 @@
 target = iphone:clang:10.0:8.0
-ARCHS ?= armv7 armv7s arm64
+ARCHS ?= armv6 arm64
 debug ?= no
 GO_EASY_ON_ME = 1
 include theos/makefiles/common.mk
@@ -9,7 +9,7 @@ PERLCFLAGS = -isysroot $(ISYSROOT) $(SDKFLAGS) $(VERSIONFLAGS) $(_THEOS_TARGET_C
 PERLLDFLAGS = -isysroot $(SYSROOT) $(SDKFLAGS) $(VERSIONFLAGS) $(LEGACYFLAGS) -multiply_defined suppress
 
 SIGN_BINS = $(THEOS_STAGING_DIR)/usr/bin/perl
-SIGN_LIBS = $(find $(THEOS_STAGING_DIR) -name *.so)
+SIGN_LIBS = $(shell find $(THEOS_STAGING_DIR) -name *.so)
 
 ARCH = $(basename $@)
 PERLBUILD = $(ARCH).perlbuild
@@ -48,14 +48,25 @@ built: $(foreach ARCH,$(ARCHS), $(ARCH).built)
 
 internal-all:: built
 
-staged: $(foreach ARCH,$(ARCHS), $(ARCH).staged)
+%.staged: $(foreach ARCH,$(ARCHS), $(ARCH).built)
 	$(foreach ARCH,$(ARCHS),$(MAKE) -C $(PERLBUILD) DESTDIR=$(THEOS_OBJ_DIR)/$(ARCH)/ install;)
-	rsync -a $(foreach ARCH,$(ARCHS), $(THEOS_OBJ_DIR)/$(ARCH)/) $(THEOS_STAGING_DIR)
-	rm -f "$(THEOS_STAGING_DIR)/usr/bin/perl"
-	$(ECHO_MERGING)$(ECHO_UNBUFFERED)$(_THEOS_PLATFORM_LIPO) $(foreach ARCH,$(TARGET_ARCHS),-arch $(ARCH) $(THEOS_OBJ_DIR)/$(ARCH)/usr/bin/perl) -create -output "$(THEOS_STAGING_DIR)/usr/bin/perl"$(ECHO_END)
+	touch $@
+
+staged: $(foreach ARCH,$(ARCHS), $(ARCH).staged)
+	@echo -n Staging copies of perl...
+	$(ECHO_NOTHING)rsync -a $(foreach ARCH,$(ARCHS), $(THEOS_OBJ_DIR)/$(ARCH)/) $(THEOS_STAGING_DIR)$(ECHO_END)
+	@echo done.
+	@echo -n Merging perl...
+	$(ECHO_NOTHING)rm -f "$(THEOS_STAGING_DIR)/usr/bin/perl"$(ECHO_END)
+	$(ECHO_NOTHING)$(_THEOS_PLATFORM_LIPO) $(foreach ARCH,$(ARCHS),-arch $(ARCH) $(THEOS_OBJ_DIR)/$(ARCH)/usr/bin/perl) -create -output "$(THEOS_STAGING_DIR)/usr/bin/perl"$(ECHO_END)
+	@echo done.
 	
 after-stage:: staged
-	$(foreach FILE,$(SIGN_BINS),ldid -Sent.xml $(FILE);)
-	$(foreach FILE,$(SIGN_LIBS),ldid -S $(FILE);)
+	@echo -n Signing binaries...
+	$(ECHO_NOTHING)$(foreach FILE,$(SIGN_BINS),ldid -Sent.xml $(FILE);)$(ECHO_END)
+	@echo done.
+	@echo -n Signing libraries...
+	$(ECHO_NOTHING)$(foreach FILE,$(SIGN_LIBS),chmod u+w $(FILE); ldid -S $(FILE);)$(ECHO_END)
+	@echo done.
 
 include $(THEOS_MAKE_PATH)/null.mk
