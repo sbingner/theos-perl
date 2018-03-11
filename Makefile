@@ -69,4 +69,15 @@ after-stage:: staged
 	$(ECHO_NOTHING)$(foreach FILE,$(SIGN_LIBS),chmod u+w $(FILE); ldid -S $(FILE);)$(ECHO_END)
 	@echo done.
 
+after-clean::
+	@echo -n Cleaning temporary perl build files...
+	$(ECHO_NOTHING)rm -rf *.perlbuild$(ECHO_END)
+	@echo -n .
+	$(ECHO_NOTHING)rm -rf *.configured$(ECHO_END)
+	@echo -n .
+	$(ECHO_NOTHING)rm -rf *.staged$(ECHO_END)
+	@echo -n .
+	$(ECHO_NOTHING)rm -rf *.built$(ECHO_END)
+	@echo done.
+
 include $(THEOS_MAKE_PATH)/null.mk
