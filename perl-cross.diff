@@ -69,7 +69,7 @@ index 2e9ad7f..38714c7 100755
  	echo ${UNAME_MACHINE}-unknown-linux-${LIBC}
  	exit ;;
 diff --git a/cnf/config.sub b/cnf/config.sub
-index cc69b06..648eab2 100755
+index cc69b06..f9f1d22 100755
 --- a/cnf/config.sub
 +++ b/cnf/config.sub
 @@ -1,4 +1,4 @@
@@ -78,6 +78,15 @@ index cc69b06..648eab2 100755
  # Configuration validation subroutine script.
  #   Copyright 1992-2016 Free Software Foundation, Inc.
  
+@@ -1407,7 +1407,7 @@ case $os in
+ 	      | -morphos* | -superux* | -rtmk* | -rtmk-nova* | -windiss* \
+ 	      | -powermax* | -dnix* | -nx6 | -nx7 | -sei* | -dragonfly* \
+ 	      | -skyos* | -haiku* | -rdos* | -toppers* | -drops* | -es* \
+-	      | -onefs* | -tirtos* | -phoenix*)
++	      | -onefs* | -tirtos* | -phoenix* | -iphoneos*)
+ 	# Remember, each alternative MUST END IN *, to match a version number.
+ 		;;
+ 	-qnx*)
 diff --git a/cnf/configure b/cnf/configure
 index f3263d6..6080bec 100755
 --- a/cnf/configure
@@ -116,96 +125,18 @@ index 4bef2be..14c4fe5 100644
  
  try_objdump() {
 diff --git a/cnf/configure_func.sh b/cnf/configure_func.sh
-index 53c9854..dc1bfa8 100644
+index 53c9854..8c8797a 100644
 --- a/cnf/configure_func.sh
 +++ b/cnf/configure_func.sh
-@@ -13,9 +13,14 @@ checkfunc() {
+@@ -7,7 +7,7 @@ checkfunc() {
+ 		try_start
+ 		funcincludes "$3" "$4" "$includes"
+ 		try_add "int main(void) { $2($3); return 0; }"
+-		try_link -O0 -fno-builtin
++		try_link -O0 -fno-builtin -Wno-error=implicit-function-declaration
+ 		resdef $1 'found' 'missing'
+ 	fi
  }
- 
- funcincludes() {
--	case "$1" in
--		*NULL*) try_includes "stdlib.h" ;;
--	esac
-+#	case "$1" in
-+#		*NULL*)
-+			try_includes "stdlib.h"
-+			try_includes "stdarg.h"
-+			try_includes "stdio.h"
-+			try_includes "unistd.h"
-+#			;;
-+#	esac
- 
- 	test -n "$3" && try_includes $3
- 	test -n "$2" && try_includes $2
-@@ -51,8 +56,8 @@ checkfunc d_difftime 'difftime' "0,0"
- checkfunc d_difftime64 'difftime64'
- checkfunc d_dirfd 'dirfd'
- checkfunc d_dladdr 'dladdr' 'NULL, NULL' 'dlfcn.h'
--checkfunc d_dlerror 'dlerror'
--checkfunc d_dlopen 'dlopen'
-+checkfunc d_dlerror 'dlerror' '' 'dlfcn.h'
-+checkfunc d_dlopen 'dlopen' 'NULL, 0' 'dlfcn.h'
- checkfunc d_drand48 'drand48'
- checkfunc d_dup2 'dup2' "0,0" 'unistd.h'
- checkfunc d_dup3 'dup3' "0,0,0" 'fcntl.h unistd.h'
-@@ -90,8 +95,8 @@ checkfunc d_getespwnam 'getespwnam'
- checkfunc d_getfsstat 'getfsstat'
- checkfunc d_getgrent 'getgrent'
- checkfunc d_getgrps 'getgroups'
--checkfunc d_gethbyaddr 'gethostbyaddr'
--checkfunc d_gethbyname 'gethostbyname'
-+checkfunc d_gethbyaddr 'gethostbyaddr' '0,0,0' 'netdb.h'
-+checkfunc d_gethbyname 'gethostbyname' 'NULL' 'netdb.h'
- checkfunc d_getnbyaddr 'getnetbyaddr' '0,0' 'netdb.h'
- checkfunc d_getnbyname 'getnetbyname' 'NULL' 'netdb.h'
- checkfunc d_gethent 'gethostent'
-@@ -123,7 +128,7 @@ checkfunc d_getsent 'getservent'
- checkfunc d_setsent 'setservent'
- checkfunc d_endsent 'endservent'
- checkfunc d_getspnam 'getspnam'
--checkfunc d_gettimeod 'gettimeofday' 'NULL,NULL'
-+checkfunc d_gettimeod 'gettimeofday' 'NULL,NULL' 'sys/time.h'
- checkfunc d_gmtime64 'gmtime64'
- checkfunc d_hasmntopt 'hasmntopt'
- checkfunc d_htonl 'htonl' "0" 'stdio.h sys/types.h netinet/in.h arpa/inet.h'
-@@ -194,7 +199,7 @@ checkfunc d_qgcvt 'qgcvt' '1.0,1,NULL'
- checkfunc d_rand 'rand'
- checkfunc d_random 'random'
- checkfunc d_re_comp 're_comp'
--checkfunc d_readdir 'readdir' 'NULL'
-+checkfunc d_readdir 'readdir' 'NULL' 'dirent.h'
- checkfunc d_readlink 'readlink'
- checkfunc d_readv 'readv'
- checkfunc d_recvmsg 'recvmsg'
-@@ -245,7 +250,7 @@ checkfunc d_shmget 'shmget'
- checkfunc d_sigaction 'sigaction'
- checkfunc d_sigprocmask 'sigprocmask'
- checkfunc d_sigsetjmp 'sigsetjmp' "NULL,0" 'setjmp.h'
--checkfunc d_snprintf 'snprintf'
-+checkfunc d_snprintf 'snprintf' 'NULL,0,NULL' 'stdio.h'
- checkfunc d_sockatmark 'sockatmark'
- checkfunc d_socket 'socket' "0,0,0" 'sys/types.h sys/socket.h'
- checkfunc d_sockpair 'socketpair'
-@@ -264,8 +269,8 @@ checkfunc d_strtod 'strtod' 'NULL,NULL'
- checkfunc d_strtol 'strtol' 'NULL,NULL,0'
- checkfunc d_strtold 'strtold'
- checkfunc d_strtold_l 'strtold_l'
--checkfunc d_strtoll 'strtoll'
--checkfunc d_strtoq 'strtoq'
-+checkfunc d_strtoll 'strtoll' 'NULL,NULL,0'
-+checkfunc d_strtoq 'strtoq' 'NULL,NULL,0' 'sys/types.h limits.h'
- checkfunc d_strtoul 'strtoul' 'NULL,NULL,0'
- checkfunc d_strtoull 'strtoull' 'NULL,NULL,0'
- checkfunc d_strtouq 'strtouq'
-@@ -292,7 +297,7 @@ checkfunc d_usleep 'usleep'
- checkfunc d_ustat 'ustat'
- define d_vfork 'undef' # unnecessary
- checkfunc d_vprintf 'vprintf' 'NULL,0'
--checkfunc d_vsnprintf 'vsnprintf'
-+checkfunc d_vsnprintf 'vsnprintf' 'NULL,0,NULL,0' 'stdio.h'
- checkfunc d_wait4 'wait4'
- checkfunc d_waitpid 'waitpid' '0,NULL,0'
- checkfunc d_wcscmp 'wcscmp'
 diff --git a/cnf/configure_misc.sh b/cnf/configure_misc.sh
 index e8c2d5f..f6cdd7a 100644
 --- a/cnf/configure_misc.sh
@@ -238,7 +169,7 @@ index e8c2d5f..f6cdd7a 100644
  define perl
  define perl5
 diff --git a/cnf/configure_tool.sh b/cnf/configure_tool.sh
-index 32201c0..e156ea1 100644
+index 32201c0..92228e7 100644
 --- a/cnf/configure_tool.sh
 +++ b/cnf/configure_tool.sh
 @@ -2,7 +2,16 @@
@@ -293,13 +224,17 @@ index 32201c0..e156ea1 100644
  
  # Misc flags setup
  predef lddlflags "-shared"	# modules
-@@ -262,6 +275,10 @@ if not hinted 'osname'; then
+@@ -262,6 +275,14 @@ if not hinted 'osname'; then
  			define osname "linux"
  			result "Linux"
  			;;
 +		*-darwin*)
 +			define osname "darwin"
 +			result "Darwin"
++			;;
++		*-iphoneos*)
++			define osname "iphoneos"
++			result "iPhoneOS"
 +			;;
  		*-bsd*)
  			define osname "bsd"

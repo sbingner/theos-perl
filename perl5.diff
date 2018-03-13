@@ -9,7 +9,7 @@ index bdcfaf17ef..d7d16e9332 100755
  # If these # comments don't work, trim them. Don't worry about any other
  # shell scripts, Configure will trim # comments from them for you.
 diff --git a/cpan/ExtUtils-MakeMaker/lib/ExtUtils/MM_Unix.pm b/cpan/ExtUtils-MakeMaker/lib/ExtUtils/MM_Unix.pm
-index 66a24d7838..74f70e00a1 100644
+index 66a24d7838..7fa2983c20 100644
 --- a/cpan/ExtUtils-MakeMaker/lib/ExtUtils/MM_Unix.pm
 +++ b/cpan/ExtUtils-MakeMaker/lib/ExtUtils/MM_Unix.pm
 @@ -32,6 +32,7 @@ BEGIN {
@@ -25,19 +25,21 @@ index 66a24d7838..74f70e00a1 100644
  
      my $libs = '$(LDLOADLIBS)';
 -    if (($Is{NetBSD} || $Is{Interix} || $Is{Android}) && $Config{'useshrplib'} eq 'true') {
-+    if (($Is{NetBSD} || $Is{Interix} || $Is{Android} || $Is{Darwin}) && $Config{'useshrplib'} eq 'true') {
++    if (($Is{NetBSD} || $Is{Interix} || $Is{Android} || $Is{Darwin} || $Is{iPhoneOS}) && $Config{'useshrplib'} eq 'true') {
          # Use nothing on static perl platforms, and to the flags needed
          # to link against the shared libperl library on shared perl
          # platforms.  We peek at lddlflags to see if we need -Wl,-R
-@@ -1031,7 +1032,7 @@ sub xs_make_dynamic_lib {
+@@ -1031,8 +1032,8 @@ sub xs_make_dynamic_lib {
              $libs .= ' "-L$(PERL_INC)" "-Wl,-R$(INSTALLARCHLIB)/CORE" "-Wl,-R$(PERL_ARCHLIB)/CORE" -lperl';
          } elsif ($Config{'lddlflags'} =~ /-R/) {
              $libs .= ' "-L$(PERL_INC)" "-R$(INSTALLARCHLIB)/CORE" "-R$(PERL_ARCHLIB)/CORE" -lperl';
 -        } elsif ( $Is{Android} ) {
-+        } elsif ( $Is{Android} || $Is{Darwin} ) {
-             # The Android linker will not recognize symbols from
+-            # The Android linker will not recognize symbols from
++        } elsif ( $Is{Android} || $Is{Darwin} || $Is{iPhoneOS} ) {
++            # The Android and darwin linker will not recognize symbols from
              # libperl unless the module explicitly depends on it.
              $libs .= ' "-L$(PERL_INC)" -lperl';
+         }
 diff --git a/dist/PathTools/Cwd.xs b/dist/PathTools/Cwd.xs
 index c6c600b6ae..027f266152 100644
 --- a/dist/PathTools/Cwd.xs

@@ -4,7 +4,7 @@ debug ?= no
 GO_EASY_ON_ME = 1
 include theos/makefiles/common.mk
 
-PERLCFGOPTS = --target=$(subst arm64,aarch64,$(ARCH))-apple-darwin --target-tools-prefix="xcrun -sdk iphoneos " -Duseshrplib=true -Dosname=darwin
+PERLCFGOPTS = --target=$(subst arm64,aarch64,$(ARCH))-apple-iphoneos --target-tools-prefix="xcrun -sdk iphoneos " -Duseshrplib=true -Dosname=iphoneos
 PERLCFLAGS = -isysroot $(ISYSROOT) $(SDKFLAGS) $(VERSIONFLAGS) $(_THEOS_TARGET_CC_CFLAGS) -w
 PERLLDFLAGS = -isysroot $(SYSROOT) $(SDKFLAGS) $(VERSIONFLAGS) $(LEGACYFLAGS) -multiply_defined suppress
 
@@ -49,8 +49,11 @@ built: $(foreach ARCH,$(ARCHS), $(ARCH).built)
 internal-all:: built
 
 %.staged: $(foreach ARCH,$(ARCHS), $(ARCH).built)
-	$(foreach ARCH,$(ARCHS),$(MAKE) -C $(PERLBUILD) DESTDIR=$(THEOS_OBJ_DIR)/$(ARCH)/ install;)
-	touch $@
+	@echo Copying $(ARCH)
+	$(ECHO_NOTHING)rm -rf $(THEOS_OBJ_DIR)/$(ARCH)/$(ECHO_END)
+	$(ECHO_NOTHING)$(MAKE) -C $(PERLBUILD) DESTDIR=$(THEOS_OBJ_DIR)/$(ARCH)/ install$(ECHO_END)
+	$(ECHO_NOTHING)touch $@$(ECHO_END)
+	@echo Finished copying $(ARCH)
 
 staged: $(foreach ARCH,$(ARCHS), $(ARCH).staged)
 	@echo -n Staging copies of perl...
